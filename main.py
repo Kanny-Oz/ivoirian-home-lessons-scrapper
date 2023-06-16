@@ -1,3 +1,14 @@
+"""
+Program Name: Ivorian-curses scrapper
+Author: https://www.github.com/LuckyKanny
+Description: This is a python program for scrap the ivorian home-school website in searching and downloading curses in.
+Copyright: © 2023 @oskhane. All rights reserved.
+
+This program is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+You should have received a copy of the license along with this program.
+If not, see <https://creativecommons.org/licenses/by-nc-nd/4.0/>.
+"""
+
 import inspect
 from requests import get
 from bs4 import BeautifulSoup
@@ -20,7 +31,10 @@ third = "https://college-ci.online/course/index.php?categoryid=3"
 college = [college_path, sixth, fifth, fourth, third]
 
 
-def _matter_dir_create(soup, school_type):
+def catching(url, school_type):
+    r = get(url)
+    soup = BeautifulSoup(r.content, "html.parser")
+
     categorynames = soup.find_all(class_="categoryname")
     titles = soup.find_all(class_="nocourse")
     categorynames_text = [categoryname.text for categoryname in categorynames]
@@ -33,24 +47,14 @@ def _matter_dir_create(soup, school_type):
                 dico.update({split: categoryname_text})
                 if school_type is h_school_path:
                     dir_path = f"{school_type / dico[split]}"
-# dir_path.mkdir(exist_ok=True, parents=True)
+                    Path(dir_path).mkdir(exist_ok=True, parents=True)
                 elif school_type is college_path:
                     dir_path = f"{school_type / str(titles).split()[4] / dico[split]}"
-# dir_path.mkdir(exist_ok=True, parents=True)
+                    Path(dir_path).mkdir(exist_ok=True, parents=True)
                 else:
                     print("?")
-    return dir_path
 
-
-def catching(url, school_type):
-    r = get(url)
-    soup = BeautifulSoup(r.content, "html.parser")
-    dir_path = _matter_dir_create(soup, school_type)
-    _matter_catching(url)
-    return dir_path
-
-
-def _matter_catching(url):
+    # catching(url)
     r = get(url)
     soup = BeautifulSoup(r.content, "html.parser")
     coursenames = soup.find_all(class_="coursename")
@@ -60,32 +64,24 @@ def _matter_catching(url):
         lessons_link_list.append(links_list[5])
     i = 0
     while i < len(lessons_link_list):
-        _curse_catching(lessons_link_list[i])
+        # _curse_catching(url)
+        r = get(url)
+        soup = BeautifulSoup(r.content, "html.parser")
+        pdf_link = str(soup.find(class_="autolink")).split('"')[3]
+
         i += 1
 
-
-def _curse_catching(url):
-    r = get(url)
-    soup = BeautifulSoup(r.content, "html.parser")
-    pdf_link = str(soup.find(class_="autolink")).split('"')[3]
-    _resume_catching(pdf_link)
-
-
-def _resume_catching(url):
-    _download(url)
-
-
-def _download(url, dir_path):
-    url = get(url).url
-    print(url)
-    file_link_split = str(url).split("/")
-    filename = file_link_split[-1].replace("%20", "_")
-    (Path.cwd() / dir_path).mkdir(exist_ok=True, parents=True)
-    filepath = _matter_dir_create / filename
-    print(filepath)
-    r = get(url)
-    with open(filepath, "wb") as f:
-        f.write(r.content)
+        # download
+        url = get(pdf_link).url
+        print(url)
+        file_link_split = str(url).split("/")
+        filename = file_link_split[-1].replace("%20", "_")
+        (Path.cwd() / dir_path).mkdir(exist_ok=True, parents=True)
+        filepath = Path(dir_path) / filename
+        print(filepath)
+        r = get(url)
+        with open(filepath, "wb") as f:
+            f.write(r.content)
 
 
 def get_variable_name(var):
