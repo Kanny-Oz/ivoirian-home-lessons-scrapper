@@ -32,14 +32,15 @@ college = [college_path, sixth, fifth, fourth, third]
 
 
 def catching(url, school_type):
-    r = get(url)
-    soup = BeautifulSoup(r.content, "html.parser")
+    r1 = get(url)
+    soup = BeautifulSoup(r1.content, "html.parser")
 
     categorynames = soup.find_all(class_="categoryname")
     titles = soup.find_all(class_="nocourse")
     categorynames_text = [categoryname.text for categoryname in categorynames]
     dico = {}
     dir_path = ""
+    split = ""
     for categoryname in categorynames:
         for categoryname_text in categorynames_text:
             if categoryname.text == categoryname_text:
@@ -55,31 +56,35 @@ def catching(url, school_type):
                     print("?")
 
     # catching(url)
-    r = get(url)
-    soup = BeautifulSoup(r.content, "html.parser")
+    r2 = get(split)
+    print(f"Catching {split}")
+    soup = BeautifulSoup(r2.content, "html.parser")
     coursenames = soup.find_all(class_="coursename")
-    lessons_link_list = []
+    link_curse = {}
     for coursename in coursenames:
         links_list = str(coursename).split('"')
-        lessons_link_list.append(links_list[5])
+        print(links_list)
+        link_curse.update({links_list[5]: str(links_list[6]).split(">")[1].split("<")[0]})
+    print(f"before append {link_curse}")
     i = 0
-    while i < len(lessons_link_list):
         # _curse_catching(url)
-        r = get(url)
-        soup = BeautifulSoup(r.content, "html.parser")
+    for unit in link_curse:
+        print(unit)
+        r3 = get(unit)
+        print(f"_curse_catching {r3.url}")
+        soup = BeautifulSoup(r3.content, "html.parser")
         pdf_link = str(soup.find(class_="autolink")).split('"')[3]
-
-        i += 1
 
         # download
         url = get(pdf_link).url
-        print(url)
+        print(f"download {pdf_link}")
+        print(dir_path)
         file_link_split = str(url).split("/")
         filename = file_link_split[-1].replace("%20", "_")
         (Path.cwd() / dir_path).mkdir(exist_ok=True, parents=True)
         filepath = Path(dir_path) / filename
         print(filepath)
-        r = get(url)
+        r = get(pdf_link)
         with open(filepath, "wb") as f:
             f.write(r.content)
 
@@ -99,3 +104,8 @@ if __name__ == "__main__":
 
     for link in h_school[1:]:
         catching(link, h_school[0])
+
+
+"""
+@todo: The multi-page system
+"""
