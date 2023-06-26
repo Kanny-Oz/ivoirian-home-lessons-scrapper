@@ -9,20 +9,20 @@ You should have received a copy of the license along with this program.
 If not, see <https://creativecommons.org/licenses/by-nc-nd/4.0/>.
 """
 
-import inspect
+from time import time
 from requests import get
 from bs4 import BeautifulSoup
 from pathlib import Path
 
 # High School
-h_school_path = (Path.cwd() / "data" / "lycee")
+h_school_path = Path.cwd() / "data" / "lycee"
 h_school_path.mkdir(exist_ok=True, parents=True)
 second = "https://lycee-ci.online/course/index.php?categoryid=2"
 first = "https://lycee-ci.online/course/index.php?categoryid=5"
 last = "https://lycee-ci.online/course/index.php?categoryid=8"
 h_school = [h_school_path, second, first, last]
 # College
-college_path = (Path.cwd() / "data" / "college")
+college_path = Path.cwd() / "data" / "college"
 college_path.mkdir(exist_ok=True, parents=True)
 sixth = "https://college-ci.online/course/index.php?categoryid=29"
 fifth = "https://college-ci.online/course/index.php?categoryid=28"
@@ -31,81 +31,112 @@ third = "https://college-ci.online/course/index.php?categoryid=3"
 college = [college_path, sixth, fifth, fourth, third]
 
 
-def catching(url, school_type):
-    r1 = get(url)
-    soup = BeautifulSoup(r1.content, "html.parser")
+def subjects_catching(url, subject_path):
+    """Subjects searching and listing
 
+    :param url: The url of class level to catch available subjects.
+    :param subject_path: The subject directory path to next downloading.
+    :return: A dictionary in this template : {subject_url: [Subject_name, subject_path]}.
+
+    """
+    r = get(url)
+    soup = BeautifulSoup(r.content, "html.parser")
+    subject_path = (subject_path / soup.find_all(class_="nocourse")[0].text.split()[0])
+    subject_path.mkdir(parents=True, exist_ok=True)
+    print(subject_path)
     categorynames = soup.find_all(class_="categoryname")
-    titles = soup.find_all(class_="nocourse")
-    categorynames_text = [categoryname.text for categoryname in categorynames]
-    dico = {}
-    dir_path = ""
-    split = ""
-    for categoryname in categorynames:
-        for categoryname_text in categorynames_text:
-            if categoryname.text == categoryname_text:
-                split = str(categoryname).split('"')[3]
-                dico.update({split: categoryname_text})
-                if school_type is h_school_path:
-                    dir_path = f"{school_type / dico[split]}"
-                    Path(dir_path).mkdir(exist_ok=True, parents=True)
-                elif school_type is college_path:
-                    dir_path = f"{school_type / str(titles).split()[4] / dico[split]}"
-                    Path(dir_path).mkdir(exist_ok=True, parents=True)
-                else:
-                    print("?")
-
-    # catching(url)
-    r2 = get(split)
-    print(f"Catching {split}")
-    soup = BeautifulSoup(r2.content, "html.parser")
-    coursenames = soup.find_all(class_="coursename")
-    link_curse = {}
-    for coursename in coursenames:
-        links_list = str(coursename).split('"')
-        print(links_list)
-        link_curse.update({links_list[5]: str(links_list[6]).split(">")[1].split("<")[0]})
-    print(f"before append {link_curse}")
-    i = 0
-        # _curse_catching(url)
-    for unit in link_curse:
-        print(unit)
-        r3 = get(unit)
-        print(f"_curse_catching {r3.url}")
-        soup = BeautifulSoup(r3.content, "html.parser")
-        pdf_link = str(soup.find(class_="autolink")).split('"')[3]
-
-        # download
-        url = get(pdf_link).url
-        print(f"download {pdf_link}")
-        print(dir_path)
-        file_link_split = str(url).split("/")
-        filename = file_link_split[-1].replace("%20", "_")
-        (Path.cwd() / dir_path).mkdir(exist_ok=True, parents=True)
-        filepath = Path(dir_path) / filename
-        print(filepath)
-        r = get(pdf_link)
-        with open(filepath, "wb") as f:
-            f.write(r.content)
+    return {
+        str(categoryname)
+        .split('"')[3]: [str(categoryname)
+        .split('"')[-1]
+        .split(">")[1]
+        .split("<")[0], subject_path / str(categoryname)
+        .split('"')[-1]
+        .split(">")[1]
+        .split("<")[0]]
+        for categoryname in categorynames
+    }
 
 
-def get_variable_name(var):
-    frame = inspect.currentframe()
-    variables = frame.f_back.f_locals.items()
-    for name, value in variables:
-        if value is var:
-            return name
-    return None
+def curses_catching(url, subject_path):
+    """Curses searching and listing
+
+    :param url: Subject's url to catch.
+    :param subject_path: The subject directory path to next downloading.
+    :return: If "coursename" is not empty, returns a dictionary in this template : {curse_url: curse_title}. \
+            Else, do a subjects_catching() alternative and returns a dictionary in this template \
+            {sub_subject_title: {subject_url: [Subject_name, subject_path]}}.
+
+    """
+    Path(subject_path).mkdir(parents=True, exist_ok=True)
+    print(subject_path)
+    r = get(url)
+    soup = BeautifulSoup(r.content, "html.parser")
+    coursenames=soup.find_all(class_="coursename")
+    if len(coursenames) != 0:
+        return {
+            str(coursename)
+            .split('"')[5]: str(coursename)
+            .split('"')[-1]
+            .split(">")[1]
+            .split("<")[0]
+            for coursename in coursenames
+        }
+    sub_subjects = soup.find_all(class_="categoryname")
+    sub_subjects_list = {
+        str(sub_subject)
+        .split('"')[3]: str(sub_subject)
+        .split('"')[4]
+        .split(">")[1]
+        .split("<")[0]
+        for sub_subject in sub_subjects
+    }
+    return {
+        sub_subjects_list[sub_subject]:
+        curses_catching(sub_subject, f"{subject_path}{sub_subjects_list.get(sub_subject)}")
+        for sub_subject in sub_subjects_list
+    }
+
+
+def link_click(url, file_path):
+    """File downloading
+
+    :param url: Final curse url where we click.
+    :param file_path: File path where we save the downloaded file.
+    :return: None.
+
+    """
+    print(file_path)
+    r = get(url)
+    soup = BeautifulSoup(r.content, "html.parser")
+    final = soup.find(class_="autolink")
+    download(str(final).split('"')[3], file_path)
+
+
+def download(url, file_path):
+    r = get(url)
+    with open(file_path, "wb") as f:
+        f.write(r.content)
+
+
+def main(url, subject_path):
+    subjects = subjects_catching(url, subject_path)
+    for subject in subjects:
+        curses = curses_catching(subject, str(subjects.get(subject)[1]))
+        if curses is not None:
+            for c in curses:
+                link_click(c, Path(subjects[subject][1]) / f"{curses[c]}.pdf")
+
+
+def high_school():
+    pass
 
 
 if __name__ == "__main__":
+    start = time()
     for link in college[1:]:
-        catching(link, college[0])
+        main(link, college[0])
+        print("\n")
 
-    for link in h_school[1:]:
-        catching(link, h_school[0])
-
-
-"""
-@todo: The multi-page system
-"""
+    end = time()
+    print(f"Time elapsed : {end - start} seconds")
